@@ -18,7 +18,6 @@ class Brand(Entity):
 
 class Car(Entity):
     name = models.CharField(max_length=100)
-    color = models.CharField(max_length=100)
     status = models.CharField(max_length=100)
     mudel = models.IntegerField()
     transmission = models.CharField(max_length=100)
@@ -36,9 +35,21 @@ class Car(Entity):
     def __str__(self):
         return self.name
 
-    # @property
-    # def limit_cars():
-    #     pass
+
+class CarColor(Entity):
+    car = models.ForeignKey(Car, verbose_name='cars', related_name='colors',on_delete=models.CASCADE)
+    color = models.CharField(max_length=7)
+    quantity = models.IntegerField(default=0)
+
+
+class BuyCar(Entity):
+    user = models.ForeignKey(User, verbose_name='users', related_name='Buys', on_delete=models.CASCADE)
+    car = models.ForeignKey(CarColor, verbose_name='CarColors', related_name='buys',on_delete=models.CASCADE)
+
+
+class RequestCar(Entity):
+    user = models.ForeignKey(User, verbose_name='users', related_name='Requests', on_delete=models.CASCADE)
+    car = models.ForeignKey(CarColor, verbose_name='CarColors', related_name='carcolors',on_delete=models.CASCADE)
 
 
 
@@ -74,16 +85,3 @@ class Order_item(Entity):
 
     def __str__(self):
         return self.car.name
-
-
-
-class Requests_Car(Entity):
-    name = models.CharField(max_length=100)
-    color = models.CharField(max_length=100)
-    status = models.CharField(max_length=100)
-    mudel = models.IntegerField()
-    transmission = models.CharField(max_length=100)
-    engin_size = models.CharField(max_length=100)
-    powerBHP = models.CharField(max_length=100)
-    distance_meter = models.CharField(max_length=100)
-    user = models.ForeignKey(User, verbose_name='users', related_name='requests_cars', on_delete=models.CASCADE)

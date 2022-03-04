@@ -25,9 +25,13 @@ class AddBrands(Schema):
     name : str
 
 
+class CarColorOut(Schema):
+    color: str
+    quantity: int
+
+
 class CarOut(UUIDSchema):
     name : str
-    color: str
     status: str
     mudel: int
     transmission: str
@@ -37,6 +41,7 @@ class CarOut(UUIDSchema):
     discription: str
     price: float
     is_salled: bool
+    colors: List[CarColorOut]
 
 
 
@@ -80,11 +85,12 @@ class HomeBrandsOut(UUIDSchema):
     cars: List[HomeCarOut]
 
 
+
 # One car
+
 
 class OneCarOut(UUIDSchema):
     name : str
-    color: str
     status: str
     mudel: int
     transmission: str
@@ -94,6 +100,7 @@ class OneCarOut(UUIDSchema):
     discription: str
     price: float
     is_salled: bool
+    colors: List[CarColorOut]
     images: List[HomeImageCarOut]
 
 
@@ -121,12 +128,6 @@ class recuest_color(Schema):
 
 
 
-class RequestCarOut(UUIDSchema):
-    name : str
+class BuyCarRequest(UUIDSchema):
+    car_id: int
     color: str
-    status: str
-    mudel: int
-    transmission: str
-    engin_size: str
-    powerBHP: str
-    distance_meter: str

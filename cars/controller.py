@@ -7,9 +7,9 @@ from pydantic import UUID4
 from ninja import Router
 from cars.schema import HomeBrandsOut, BrandsOut, CarOut, ImageOut, OrderItemOut,\
                         AddBrands, BrandsOutWithCars, NewSchema, HomeCarOut,\
-                        PaginatedOneBrand, recuest_color, RequestCarOut
+                        PaginatedOneBrand, recuest_color
 from project.utils.schemas import MessageOut
-from cars.models import Brand, Car, Image, Order_item, Requests_Car
+from cars.models import Brand, Car, Image, Order_item, CarColor, BuyCar, RequestCar
 from account.authorization import GlobalAuth
 
 
@@ -21,19 +21,6 @@ home_controller = Router()
 
 
 User = get_user_model()
-
-
-@pub_controller.get('list_brands', response={
-        200:List[BrandsOutWithCars],
-        404: MessageOut
-    })
-def list_brands(request):
-
-    brands = Brand.objects.all()
-    if brands:
-        return brands
-    else:
-        return 404, {'detail': 'No brands yet'}
 
 
 
@@ -51,44 +38,31 @@ def list_cars(request):
     
 
 
-@pub_controller.get('list_images', response={
-        200:List[ImageOut],
-        404: MessageOut
-    })
-def list_images(request):
-    
-    images = Image.objects.all()
-    if images:
-        return images
-    else:
-        return 404, {'detail': 'No images yet'}
+# @pub_controller.get('list_OrderItem', response={
+#         200:List[OrderItemOut],
+#         404: MessageOut
+#     })
+# def list_orders(request):
 
-
-@pub_controller.get('list_OrderItem', response={
-        200:List[OrderItemOut],
-        404: MessageOut
-    })
-def list_images(request):
-
-    Ordered_items = Order_item.objects.all()
-    if Ordered_items:
-        return Ordered_items
-    else:
-        return 404, {'detail': 'No Ordered items yet'}
+#     Ordered_items = Order_item.objects.all()
+#     if Ordered_items:
+#         return Ordered_items
+#     else:
+#         return 404, {'detail': 'No Ordered items yet'}
 
 
 
-@pub_controller.post('addBrand', auth=GlobalAuth(), response={
-        201: BrandsOut,
-        400: MessageOut
-    })
-def create_brand(request, brand_in: AddBrands):
-    brand = Brand(**brand_in.dict(), user=get_object_or_404(User, id=request.auth['pk']))
-    is_saved = brand.save()
-    if is_saved:
-        return 400, {'detail': 'Brand not saved'}
-    else:
-        return 201, brand
+# @pub_controller.post('addBrand', auth=GlobalAuth(), response={
+#         201: BrandsOut,
+#         400: MessageOut
+#     })
+# def create_brand(request, brand_in: AddBrands):
+#     brand = Brand(**brand_in.dict(), user=get_object_or_404(User, id=request.auth['pk']))
+#     is_saved = brand.save()
+#     if is_saved:
+#         return 400, {'detail': 'Brand not saved'}
+#     else:
+#         return 201, brand
     
 
 # Home
@@ -123,6 +97,37 @@ def retrieve_car(request, id: UUID4):
         'one_car': one_car,
         'new': new,
     }
+
+
+@cars_controller.post('{id}/buy', auth=GlobalAuth())
+def buy_car(request, id: UUID4, color):
+    color_info = CarColor.objects.filter(car_id=id, color=color).first()
+    
+    if color_info:
+        if color_info.quantity > 0:
+            color_info.quantity -= 1
+            color_info.save()
+            
+            BuyCar.objects.create(user=get_object_or_404(User, id=request.auth['pk']), car=color_info)
+            
+            return {
+                "msg": "come to receive your car"
+            }
+        else:
+            RequestCar.objects.create(user=get_object_or_404(User, id=request.auth['pk']), car=color_info)
+
+            return {
+                "msg": "We receive your request, Contact us to confirm your order"
+            }
+
+    else:
+        return {
+            'msg': 'this color not valied'
+        }
+
+
+
+
 
 
 
@@ -171,31 +176,23 @@ def list_brand_cars(request, brand: str, page: int):
     
     return response(200, cars, paginated=True, per_page=12, page=page)
 
+    
 
-@cars_controller.get('', response={
-    200: List[HomeCarOut],
-    404: MessageOut
-})
-def search_cars(
-        request, *,
-        name: str = None,
-        color: str = None,
-):
+@pub_controller.get('list_fav', auth=GlobalAuth(), response={
+        200: List[HomeCarOut],
+        404: MessageOut
+    })
+def list_fav(request):
+    cars = Car.objects.filter(favourites=request.auth['pk'])
 
-    if name and color:
-        cars = Car.objects.filter(name=name, color=color)
+    if cars:
         return cars
-
     else:
-        cars = Car.objects.all()
-        if cars:
-            return cars
-        else:
-            return 404, {'detail': 'No products found'}
+        return 404, {'detail': 'No favourites yet'}
 
 
 
-@cars_controller.get('add_fav/<id>', auth=GlobalAuth())
+@cars_controller.post('add_fav/<id>', auth=GlobalAuth())
 def add_fav(request, id):
     car = get_object_or_404(Car, id=id)
     if car.favourites.filter(id=request.auth['pk']).exists():
@@ -211,27 +208,5 @@ def add_fav(request, id):
         }
 
 
-@pub_controller.get('list_fav', auth=GlobalAuth(), response={
-        200: List[HomeCarOut],
-        404: MessageOut
-    })
-def list_fav(request):
-    cars = Car.objects.filter(favourites=request.auth['pk'])
-
-    if cars:
-        return cars
-    else:
-        return 404, {'detail': 'No favourites yet'}
         
 
-@cars_controller.get('add_fav/<id>/req', auth=GlobalAuth(), response={
-        201: RequestCarOut,
-        400: MessageOut
-    })
-def request_car(request, id, recuest_color: recuest_color):
-    car = get_object_or_404(Car, id=id)
-    request_car = Requests_Car.objects.create(name=car.name, color=recuest_color, status=car.status, mudel=car.mudel, transmission=car.transmission, engin_size=car.engin_size, powerBHP=car.powerBHP, distance_meter=car.distance_meter, user=get_object_or_404(User, id=request.auth['pk']))
-    if request_car:
-        return 201, request_car
-    else:
-        return 400, {'detail': 'Request failed'}
